@@ -23,7 +23,7 @@ const ScatterPlot = ({
     const digits = parseFloat(dataMaxY.toString()).toFixed(0).length + 1
 
     //Padding around the plot
-    const padding = (FONT_SIZE + digits) * 3 + padX
+    const padding = (FONT_SIZE + digits) * 3 + 5
     //Chart width and height to calculate the points
     const chartWidth = width - (padding * 2)
     const chartHeight = height - (padding * 2)
@@ -42,7 +42,8 @@ const ScatterPlot = ({
             index: element.index,
             x: x,
             y: y,
-            label: element.label 
+            label: element.label,
+            labelIndex: element.labelIndex
         }
     })
 
@@ -163,7 +164,7 @@ const ScatterPlot = ({
     const LabelsYAxis = () => {
         const PARTS = numberOfHorizontalGuides || data.length - 1;
         return new Array(PARTS + 1).fill(0).map((_, index) => {
-            const x = FONT_SIZE;
+            const x = FONT_SIZE + 5;
             const ratio = index / (numberOfHorizontalGuides || data.length - 1);
 
             const yCoordinate = chartHeight - (chartHeight * ratio) + padding + FONT_SIZE / 2;
@@ -190,14 +191,25 @@ const ScatterPlot = ({
         e.target.style.cursor = "pointer"
     }
 
-    const POIEndHover = (e) => {
-        e.target.style.fill = "red"
+    const POIEndHover = (p,e) => {
+        let color = "red"
+        if(p.x <= origin[1] && p.y >= origin[0]) {
+            color = "orange"
+        }
+        else if(p.x < origin[1] && p.y < origin[0]) {
+            color = "blue"
+        }
+        else if (p.x >= origin[1] && p.y <= origin[0]) {
+            color = "green"
+        }
+        console.log(e);
+        e.target.style.fill = color
         e.target.style.r = "3"
     }
 
     const [clickedPoint, setClickedPoint] = useState(-1)
     const POIClick = (point) => {
-        console.log(point.x === origin[0] && point.y === origin[1]);
+        //console.log(point.x === origin[0] && point.y === origin[1]);
         if(clickedPoint != point.index) {
             const tempX = point.x
             const tempY = point.y
@@ -210,61 +222,115 @@ const ScatterPlot = ({
         }
     }
 
-    const pointIcon = (p,index) => {
-        if(p.label == "baz") {
+    const pointIcon = (p,color,index) => {
+        //console.log(p);
+        switch (p.labelIndex) {
+            case 1:
             return (
-                <rect 
+                <rect
+                    key={p.x+""+p.y} 
                     x={p.x-2.5} 
                     y={p.y-2.5}  
                     width="5" 
                     height="5"
-                    fill={"red"}
+                    fill={color}
                     stroke={p.index === clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={() => POIClick(p)} 
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={POIEndHover}
+                    onMouseLeave={(e) => POIEndHover(p,e)}
                 />
             )
-        }
-        else if (p.label == "foo"){
+        case 2:
             return (
                 <rect 
+                    key={p.x+""+p.y} 
                     width="5" 
                     height="5"
-                    fill={"red"}
+                    fill={color}
                     stroke={p.index === clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={() => POIClick(p)} 
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={POIEndHover}
+                    onMouseLeave={(e) => POIEndHover(p,e)}
                     transform={`translate(${p.x}, ${p.y-3.5}) rotate(45, 0, 0)`}
                 />
             )
-        }
-        else {
+        default:
             return (
                 <circle 
-                    key={index} 
+                    key={p.x+""+p.y} 
                     cx={p.x}
                     cy={p.y} 
                     r="3" 
-                    fill={"red"} 
+                    fill={color} 
                     stroke={p.index == clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={() => POIClick(p)} 
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={POIEndHover}
+                    onMouseLeave={(e) => POIEndHover(p,e)}
                 />
             )
         }
     }
 
+    const Legend = () => {
+        const unique = [... new Set(data.map(x=>x.label))]
+        
+        return unique.map((label, i) => {
+            const tempPoint = {
+                x: padding + 50*i,
+                y: height - 8,
+                labelIndex: i
+            }
+            return (
+                <React.Fragment key={label}>
+                    {pointIcon(tempPoint, "red", i)}
+                    <text
+                        key={i+"f"}
+                        x={padding + 50*i + 10}
+                        y={height - 5}
+                        style={{
+                            fill: "#808080",
+                            fontSize: FONT_SIZE + 5,
+                            userSelect: "none"
+                        }}
+                    >
+                        {label}
+                    </text>
+                </React.Fragment>
+                
+
+            )
+        })
+    }
+
+    /* 
+                |
+p < x && p > y  |   p > x && p > y
+                |
+        --------+--------
+                |
+p < x && p < y  |   p > x && p < y
+                |
+    */
+
     const POIs = () => {
         if(data) {
             return points.map( (p, index) => {
+                //calculate which color the point should be
+                let color = "red"
+                if(p.x <= origin[1] && p.y >= origin[0]) {
+                    color = "orange"
+                }
+                else if(p.x < origin[1] && p.y < origin[0]) {
+                    color = "blue"
+                }
+                else if (p.x >= origin[1] && p.y <= origin[0]) {
+                    color = "green"
+                }
                 return (
-                    pointIcon(p, index)
+                    pointIcon(p, color, index)
                 )
             })
         }
@@ -282,6 +348,7 @@ const ScatterPlot = ({
             <LabelsXAxis/>
             <LabelsYAxis/>
             <POIs/>
+            <Legend/>
         </svg>
     )
 }

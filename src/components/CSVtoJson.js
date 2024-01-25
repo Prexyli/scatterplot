@@ -24,11 +24,16 @@
 -34,29,a
 */
 
+function onlyUnique(value, index, array) {
+    return array.indexOf(value) === index;
+}
+
 const CSVtoJson = (csv) => {
     
     const lines = csv.split("\n")
     let result = [];
-    var headers = ["x", "y", "label"]
+    let headers = ["x", "y", "label"]
+    let foundLabels = []
     for(let i = 0; i < lines.length; ++i) {
         let obj = {}
         const currentLine = lines[i].split(",")
@@ -36,8 +41,12 @@ const CSVtoJson = (csv) => {
         if(currentLine == "") continue
         
         for(let j=0; j < headers.length; ++j) {
-            obj[headers[j]] = currentLine[j]
+            obj[headers[j]] = currentLine[j].trim()
         }
+        if(!foundLabels.includes(currentLine[2])) {
+            foundLabels.push(currentLine[2])
+        }
+        obj["labelIndex"] = foundLabels.indexOf(currentLine[2])
         obj["index"] = i
         result.push(obj)
     }
