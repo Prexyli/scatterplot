@@ -31,9 +31,12 @@ const ScatterPlot = ({
     useEffect(()=>{
         setClickedPoint(-1)
         setOrigin(ORIGIN_POINT)
+        setDrawEuclidean(false)
+        setColorEuclidean([])
     },[data])
 
     const [drawEuclidean, setDrawEuclidean] = useState(false)
+    const [colorEuclidean, setColorEuclidean] = useState([])
     
     
     const points = data.map( element => {
@@ -193,17 +196,17 @@ const ScatterPlot = ({
         e.target.style.cursor = "pointer"
     }
 
-    const POIEndHover = (p,e) => {
-        let color = "red"
-        if(p.x <= origin[1] && p.y >= origin[0]) {
-            color = "orange"
-        }
-        else if(p.x < origin[1] && p.y < origin[0]) {
-            color = "blue"
-        }
-        else if (p.x >= origin[1] && p.y <= origin[0]) {
-            color = "green"
-        }
+    const POIEndHover = (p,e, color) => {
+        // let color = "red"
+        // if(p.x <= origin[1] && p.y >= origin[0]) {
+        //     color = "orange"
+        // }
+        // else if(p.x < origin[1] && p.y < origin[0]) {
+        //     color = "blue"
+        // }
+        // else if (p.x >= origin[1] && p.y <= origin[0]) {
+        //     color = "green"
+        // }
         //console.log(e);
         e.target.style.fill = color
         e.target.style.r = "3"
@@ -218,33 +221,35 @@ const ScatterPlot = ({
                 const tempY = point.y
                 setOrigin([tempY, tempX])
                 setClickedPoint(point.index)
+                setDrawEuclidean(false)
+                setColorEuclidean([])
             }
             else {
                 setOrigin(ORIGIN_POINT)
                 setClickedPoint(-1)
                 setDrawEuclidean(false)
+                setColorEuclidean([])
             }
         }
         else if (e.type === 'contextmenu') {
             if(clickedPoint != point.index) {
                 setClickedPoint(point.index)
                 setOrigin(ORIGIN_POINT)
-                findEuclidean(point)
                 setDrawEuclidean(true)
             }
             else {
                 setOrigin(ORIGIN_POINT)
                 setClickedPoint(-1)
                 setDrawEuclidean(false)
+                setColorEuclidean([])
             }
         }
         
     }
 
-    
-
     const pointIcon = (p,color,index) => {
         //console.log(p);
+        const tempColor = colorEuclidean.includes(p.index) ? "black" : color
         switch (p.labelIndex) {
             case 1:
             return (
@@ -254,13 +259,13 @@ const ScatterPlot = ({
                     y={p.y-2.5}  
                     width="5" 
                     height="5"
-                    fill={color}
+                    fill={tempColor}
                     stroke={p.index === clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={(e) => POIClick(p,e)} 
                     onContextMenu={(e) => POIClick(p,e)}
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={(e) => POIEndHover(p,e)}
+                    onMouseLeave={(e) => POIEndHover(p,e,tempColor)}
                 />
             )
         case 2:
@@ -269,13 +274,13 @@ const ScatterPlot = ({
                     key={p.x+""+p.y} 
                     width="5" 
                     height="5"
-                    fill={color}
+                    fill={tempColor}
                     stroke={p.index === clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={(e) => POIClick(p,e)}
                     onContextMenu={(e) => POIClick(p,e)} 
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={(e) => POIEndHover(p,e)}
+                    onMouseLeave={(e) => POIEndHover(p,e,tempColor)}
                     transform={`translate(${p.x}, ${p.y-3.5}) rotate(45, 0, 0)`}
                 />
             )
@@ -286,13 +291,13 @@ const ScatterPlot = ({
                     cx={p.x}
                     cy={p.y} 
                     r="3" 
-                    fill={color} 
+                    fill={tempColor} 
                     stroke={p.index == clickedPoint ? "black" : ""}
                     strokeWidth="1"
                     onClick={(e) => POIClick(p,e)} 
                     onContextMenu={(e) => POIClick(p,e)}
                     onMouseEnter={POIStartHover} 
-                    onMouseLeave={(e) => POIEndHover(p,e)}
+                    onMouseLeave={(e) => POIEndHover(p,e,tempColor)}
                 />
             )
         }
@@ -360,28 +365,39 @@ p < x && p < y  |   p > x && p < y
         }
     }
 
+    useEffect(()=> {
+        console.log("clicked", clickedPoint);
+        const temps = clickedPoint >= 0 ? findEuclidean(points[clickedPoint]) : [];
+        
+        console.log("temps",temps);
+        drawEuclidean ? setColorEuclidean([...temps.map(x=>x.index)]) : <></>
+    },[clickedPoint])
+
     const findEuclidean = (point) => {
-        const pointPairs = [];
-        const p1 = point;
-        for (let i = 0; i < points.length; ++i) {
-            const p2 = points[i];
-            if(p1.index == p2.index) continue //Don't compare to self
-            const distance = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
-            pointPairs.push({ p1: p1.index, p2: p2.index, distance });
+        if(clickedPoint > 0) {
+            const pointPairs = [];
+            const p1 = point;
+            for (let i = 0; i < points.length; ++i) {
+                const p2 = points[i];
+                if(p1.index == p2.index) continue //Don't compare to self
+                const distance = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+                pointPairs.push({ index: p2.index, x: p2.x, y: p2.y, distance:distance});
+            }
+            pointPairs.sort((a, b) => a.distance - b.distance);
+            console.log("pp", pointPairs.slice(0, 5));
+            return (pointPairs.slice(0, 5))
         }
-        pointPairs.sort((a, b) => a.distance - b.distance);
-        console.log(pointPairs.slice(0, 5));
-        return (pointPairs.slice(0, 5))
     }
 
     const Euclidean = () => {
         const tempPoint = points.find(o => o.index === clickedPoint)
-        console.log("tempPoint",tempPoint);
+        //console.log("tempPoint",tempPoint);
         const tempArray = findEuclidean(tempPoint)
-        console.log("temparray",tempArray);
-        return tempArray.map((point)=> {
+        //console.log("temparray",tempArray);
+        return tempArray.map((point,i)=> {
             return (
                 <polyline
+                    key={i}
                     fill="none"
                     stroke="#ccc"
                     strokeWidth="1.0"
@@ -403,9 +419,9 @@ p < x && p < y  |   p > x && p < y
             <HorizontalGuides/>
             <LabelsXAxis/>
             <LabelsYAxis/>
+            {drawEuclidean && clickedPoint > 0 ? <Euclidean/> : <></>}
             <POIs/>
             <Legend/>
-            {drawEuclidean ? <Euclidean/> : <></>}
             
         </svg>
     )
